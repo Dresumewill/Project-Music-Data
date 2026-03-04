@@ -13,7 +13,23 @@
 <h1>User Music Listening Analysis</h1>
 </header>
 
+<main>
 
+<label for="userSelect">Choose a user:</label>
+
+<select id="userSelect" aria-describedby="userHelp">
+<option value="">Select user</option>
+</select>
+
+<p id="userHelp">
+Selecting a user will display listening statistics.
+</p>
+
+<section id="results" aria-live="polite"></section>
+
+</main>
+
+<script type="module" src="./script.mjs"></script>
 
 </body>
 </html>
