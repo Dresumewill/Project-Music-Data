@@ -1,95 +1,96 @@
-import { getSong, getListenEvents } from "./data.js";
+import { getUserIDs, getListenEvents, getSong } from "./data.js";
+import {
+	mostListenedSong,
+	mostListenedArtist,
+	mostListenedSongFridayNight,
+	mostListenedSongByTime,
+	mostListenedArtistByTime,
+	mostListenedFridayNightByTime,
+	mostListenedConsecutiveSong,
+	songsListenedEveryDay,
+	topGenres
+} from "./main.js";
 
-const eventsList = getListenEvents("1")
-function mostListenedSong(eventList) {
-	const counts = {};
+const userSelect = document.getElementById("user-select");
+const resultsSection = document.getElementById("results");
 
-	let maxId = null;
-	let maxCount = 0;
+const userIDs = getUserIDs();
+for (const id of userIDs) {
+	const option = document.createElement("option");
+	option.value = id;
+	option.textContent = `User ${id}`;
+	userSelect.appendChild(option);
+}
 
-	for (const item of eventsList) {
-		counts[item.song_id] = (counts[item.song_id] || 0) + 1;
-		if (counts[item.song_id] > maxCount) {
-			maxCount = counts[item.song_id];
-			maxId = item.song_id;
-		}
+function formatSong(song) {
+	return `${song.artist} - ${song.title}`;
+}
+
+userSelect.addEventListener("change", () => {
+	const userId = userSelect.value;
+	resultsSection.innerHTML = "";
+
+	if (!userId) return;
+
+	const events = getListenEvents(userId);
+
+	if (events.length === 0) {
+		resultsSection.innerHTML = "<p>This user didn't listen to any songs.</p>";
+		return;
 	}
 
-	const song = getSong(maxId);
-	return song;
-}
+	let html = "";
 
+	// Q1: Most listened song by count
+	const songByCount = mostListenedSong(events);
+	html += `<h2>Most listened song</h2><p>${formatSong(songByCount)}</p>`;
 
-function mostListenedArtist(userID) {
-	const eventsList = getListenEvents(userID);
-	const counts = {};
+	// Q4a: Most listened song by time
+	const songByTime = mostListenedSongByTime(events);
+	html += `<h2>Most listened song (by listening time)</h2><p>${formatSong(songByTime)}</p>`;
 
-	let maxArtist = null;
-	let maxCount = 0;
+	// Q2: Most listened artist by count
+	const artistByCount = mostListenedArtist(events);
+	html += `<h2>Most listened artist</h2><p>${artistByCount}</p>`;
 
-	const songsList = [];
+	// Q4b: Most listened artist by time
+	const artistByTime = mostListenedArtistByTime(events);
+	html += `<h2>Most listened artist (by listening time)</h2><p>${artistByTime}</p>`;
 
-	for (const item of eventsList) {
-		const song = getSong(item.song_id)
-		songsList.push(song)
+	// Q3: Friday night song by count
+	const fridaySongCount = mostListenedSongFridayNight(events);
+	if (fridaySongCount) {
+		html += `<h2>Most listened song on Friday night</h2><p>${formatSong(fridaySongCount)}</p>`;
 	}
 
-	for (const song of songsList) {
-		counts[song.artist] = (counts[song.artist] || 0) + 1;
-		if (counts[song.artist] > maxCount) {
-			maxCount = counts[song.artist];
-			maxArtist = song.artist;
-		}
+	// Q4c: Friday night song by time
+	const fridaySongTime = mostListenedFridayNightByTime(events);
+	if (fridaySongTime) {
+		html += `<h2>Most listened song on Friday night (by listening time)</h2><p>${formatSong(fridaySongTime)}</p>`;
 	}
 
-	return maxArtist
-}
+	// Q5: Longest consecutive streak
+	const streak = mostListenedConsecutiveSong(events);
+	if (streak) {
+		const streakSong = getSong(streak.songId);
+		html += `<h2>Longest listening streak</h2><p>${formatSong(streakSong)} (${streak.count} times in a row)</p>`;
+	}
 
+	// Q6: Songs listened every day
+	const everydaySongs = songsListenedEveryDay(events);
+	if (everydaySongs.length > 0) {
+		const songNames = everydaySongs.map(id => formatSong(getSong(id))).join(", ");
+		html += `<h2>Songs listened to every day</h2><p>${songNames}</p>`;
+	}
 
-function mostListenedSongFridayNight (eventsList) {
-	const fridayNightSongs = eventsList.filter(event => {
-		const day = new Date(event.timestamp).getDay();
-		return day === 5 || day === 6;
-	})
-	const mostListenedSongFriday = mostListenedSong( fridayNightSongs);
-	return mostListenedSongFriday
-}
+	// Q7: Top genres
+	const genres = topGenres(events);
+	if (genres.length > 0) {
+		const genreCount = genres.length;
+		const label = genreCount === 1 ? "Top genre" : `Top ${genreCount} genres`;
+		const genreNames = genres.map(g => g.genre).join(", ");
+		html += `<h2>${label}</h2><p>${genreNames}</p>`;
+	}
 
-function mostListenedConsecutiveSong(eventsList) {
-	const songConsecutiveStrike = {
-		songId: null,
-		count: 0
-	};
-
-	let currentSongId = null;
-	let maxStreak = 0;
-	let count = 0
-
-	eventsList.forEach((event) => {
-
-		if(currentSongId === event.song_id) {
-			count++
-		} 
-		else {
-			currentSongId = event.song_id;
-			count = 1;
-		}
-
-		if(maxStreak < count) {
-			maxStreak = count;
-			songConsecutiveStrike.songId = currentSongId;
-			songConsecutiveStrike.count = maxStreak;
-		}
-	});
-
-	return songConsecutiveStrike
-}
-
-const songid = mostListenedConsecutiveSong(eventsList)
-
-console.log(songid)
-
-
-// const result = mostListenedArtist("1");
-
-// console.log(result)
+	resultsSection.innerHTML = html;
+});
